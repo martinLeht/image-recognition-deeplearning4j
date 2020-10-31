@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>2.3.4.RELEASE</version>
+		<relativePath/> <!-- lookup parent from repository -->
+	</parent>
+	<groupId>com.image.recognition</groupId>
+	<artifactId>image_recognition_demo</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<name>image_recognition_demo</name>
+	<description>Demo to implement image racognition with DeepLearning4J</description>
+
+	<properties>
+		<java.version>11</java.version>
+		<dl4j.version>1.0.0-beta7</dl4j.version>
+	</properties>
+
+	<dependencies>
+	
+		<!--  Spring Dependencies */ -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-hateoas</artifactId>
+		</dependency>
+		
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-validation</artifactId>
+		</dependency>
+		
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+		
+		<dependency>
+			<groupId>org.springframework.data</groupId>
+			<artifactId>spring-data-rest-hal-browser</artifactId>
+		</dependency>
+		
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+		
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+			<exclusions>
+				<exclusion>
+					<groupId>org.junit.vintage</groupId>
+					<artifactId>junit-vintage-engine</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		
+		<!--  DeepLearning4J Dependencies */ -->
+		
+		<!-- FOR NATIVE CPU Backend
+		<dependency>
+	        <groupId>org.nd4j</groupId>
+	        <artifactId>nd4j-native-platform</artifactId>
+	        <version>${dl4j.version}</version>
+	    </dependency>
+	     -->
+	    <!-- FOR GPU Backend -->
+	    <dependency>
+			<groupId>org.nd4j</groupId>
+			<artifactId>nd4j-cuda-10.2-platform</artifactId>
+			<version>${dl4j.version}</version>
+		</dependency>
+		
+		<dependency>
+			<groupId>org.deeplearning4j</groupId>
+			<artifactId>deeplearning4j-cuda-10.2</artifactId>
+			<version>${dl4j.version}</version>
+		</dependency>
+	 	
+	    <dependency>
+	        <groupId>org.deeplearning4j</groupId>
+	        <artifactId>deeplearning4j-core</artifactId>
+	        <version>${dl4j.version}</version>
+	    </dependency>
+	    
+	    <dependency>
+	        <groupId>org.deeplearning4j</groupId>
+	        <artifactId>deeplearning4j-zoo</artifactId>
+	        <version>${dl4j.version}</version>
+	    </dependency>
+        
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>javacpp-presets</artifactId>
+            <version>1.5.4</version>
+        </dependency>
+        
+		
+	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+		</plugins>
+	</build>
+
+</project>
