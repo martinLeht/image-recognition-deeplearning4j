@@ -93,12 +93,6 @@
 	        <version>${dl4j.version}</version>
 	    </dependency>
         
-        <dependency>
-            <groupId>org.bytedeco</groupId>
-            <artifactId>javacpp-presets</artifactId>
-            <version>1.5.4</version>
-        </dependency>
-        
 		
 	</dependencies>
 

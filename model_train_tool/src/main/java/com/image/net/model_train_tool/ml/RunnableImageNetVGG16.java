@@ -1,4 +1,4 @@
-package com.image.recognition.ml;
+package com.image.net.model_train_tool.ml;
 
 import java.io.File;
 import java.io.IOException;
@@ -32,10 +32,17 @@ import org.nd4j.linalg.dataset.api.preprocessor.VGG16ImagePreProcessor;
 import org.nd4j.linalg.learning.config.Nesterovs;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
 
+
 public class RunnableImageNetVGG16 implements Runnable {
 
 	private final static Logger LOGGER = Logger.getLogger(RunnableImageNetVGG16.class.getName());
 	
+	/* Model data locations */
+	public static String DATA_PATH;
+	public static String TRAIN_FOLDER;
+	public static String TEST_FOLDER;
+	public static String SAVING_PATH;
+    
 	private ComputationGraph preTrainedNet;
 	private ComputationGraph vgg16Transfer;
 	
@@ -47,19 +54,24 @@ public class RunnableImageNetVGG16 implements Runnable {
     public static final String[] ALLOWED_FORMATS = BaseImageLoader.ALLOWED_FORMATS;
     public static BalancedPathFilter PATH_FILTER = new BalancedPathFilter(RAND_NUM_GEN, ALLOWED_FORMATS, LABEL_GENERATOR_MAKER);
 	
+    
+    /* Parameters for our training phase */
 	private static final int EPOCH = 3;
     private static final int BATCH_SIZE = 16;
     private static final int TRAIN_SIZE = 85;
-	private static final int NUM_POSSIBLE_LABELS = 2;
+	private static final int OUTPUT_LABELS = 2;
 	
 	private static final int SAVING_INTERVAL = 100;
-	
-    public static String DATA_PATH = "C:/Users/Saitamas PC/Pictures/image_rec/cat_or_dog";
-    public static final String TRAIN_FOLDER = DATA_PATH + "/train_both";
-    public static final String TEST_FOLDER = DATA_PATH + "/test_both";
-    private static final String SAVING_PATH = DATA_PATH + "/saved2/modelIteration_";
-    
+	    
     private static final String FREEZE_UNTIL_LAYER = "fc2";
+    
+    
+    public RunnableImageNetVGG16(String dataSavePath) {
+    	DATA_PATH = dataSavePath;
+    	TRAIN_FOLDER = DATA_PATH + "/train_both";
+        TEST_FOLDER = DATA_PATH + "/test_both";
+        SAVING_PATH = DATA_PATH + "/saved/modelIteration_";
+	}
 	
 	@Override
 	public void run() {
@@ -67,7 +79,6 @@ public class RunnableImageNetVGG16 implements Runnable {
 			init();
 			trainModel();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
@@ -92,10 +103,10 @@ public class RunnableImageNetVGG16 implements Runnable {
 					.setFeatureExtractor(FREEZE_UNTIL_LAYER)
 					.removeVertexKeepConnections("predictions")
 					.addLayer("predictions", new OutputLayer.Builder(LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD)
-	                .nIn(4096).nOut(NUM_POSSIBLE_LABELS)
+	                .nIn(4096).nOut(OUTPUT_LABELS)
 	                .weightInit(WeightInit.XAVIER)
 	                .activation(Activation.SOFTMAX).build(), FREEZE_UNTIL_LAYER).build();
-			vgg16Transfer.setListeners(new ScoreIterationListener(5));
+			vgg16Transfer.setListeners(new ScoreIterationListener(20));
 			
 			LOGGER.info(vgg16Transfer.summary());
 		}
@@ -146,7 +157,7 @@ public class RunnableImageNetVGG16 implements Runnable {
         ImageRecordReader imageRecordReader = new ImageRecordReader(224, 224, 3, LABEL_GENERATOR_MAKER);
         imageRecordReader.initialize(sample);
 
-        DataSetIterator iterator = new RecordReaderDataSetIterator(imageRecordReader, BATCH_SIZE, 1, NUM_POSSIBLE_LABELS);
+        DataSetIterator iterator = new RecordReaderDataSetIterator(imageRecordReader, BATCH_SIZE, 1, OUTPUT_LABELS);
         iterator.setPreProcessor(new VGG16ImagePreProcessor());
         return iterator;
     }

@@ -16,8 +16,8 @@ import org.nd4j.linalg.dataset.api.preprocessor.DataNormalization;
 import org.nd4j.linalg.dataset.api.preprocessor.VGG16ImagePreProcessor;
 import org.springframework.stereotype.Service;
 
-import com.image.recognition.ml.AnimalType;
-import com.image.recognition.ml.RunnableImageNetVGG16;
+import com.image.net.model_train_tool.ml.AnimalType;
+import com.image.net.model_train_tool.ml.RunnableImageNetVGG16;
 
 @Service
 public class ImageRecognitionServiceImpl implements ImageRecognitionService {
