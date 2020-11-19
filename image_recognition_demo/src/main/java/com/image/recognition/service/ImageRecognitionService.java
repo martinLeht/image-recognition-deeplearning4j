@@ -5,7 +5,9 @@ import java.io.IOException;
 
 import com.image.net.model_train_tool.ml.AnimalType;
 
+import javafx.util.Pair;
+
 
 public interface ImageRecognitionService {
-	public AnimalType detectAnimal(File file, Double threshold) throws IOException;
+	public Pair<AnimalType, Double> detectAnimal(File file, Double threshold) throws IOException;
 }
