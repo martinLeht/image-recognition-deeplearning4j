@@ -16,11 +16,11 @@ public class ImageRecognitionDemoApplication {
 	private final static Logger LOGGER = Logger.getLogger(ImageRecognitionDemoApplication.class.getName());
 	
 	/* Path to model that was trained using the cmd tool (ModelTrainerTool) */
-	public static String MODEL_PATH = System.getProperty("user.home") + "\\Pictures\\image_rec\\cat_or_dog\\saved\\modelIteration_3900_epoch_2.zip";
+	public static String MODEL_PATH = System.getProperty("user.home") + "\\image_recognition_model\\tool_data\\saved\\modelvgg16.zip";
 	
 	
 	public static void main(String[] args) throws IOException, InterruptedException {
-		File model = new File("src/main/resources/saved/model.zip");
+		File model = new File("src/main/resources/saved/modelvgg16.zip");
 		if (!model.exists() || FileUtils.checksum(model, new Adler32()).getValue() != 3082129141l) {
             model.delete();
             

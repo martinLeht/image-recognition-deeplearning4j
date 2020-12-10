@@ -33,9 +33,9 @@ import org.nd4j.linalg.learning.config.Nesterovs;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
 
 
-public class RunnableImageNetVGG16 implements Runnable {
+public class AnimalClassificationVGG16ModelTrainer {
 
-	private final static Logger LOGGER = Logger.getLogger(RunnableImageNetVGG16.class.getName());
+	private final static Logger LOGGER = Logger.getLogger(AnimalClassificationVGG16ModelTrainer.class.getName());
 	
 	/* Model data locations */
 	public static String DATA_PATH;
@@ -66,25 +66,14 @@ public class RunnableImageNetVGG16 implements Runnable {
     private static final String FREEZE_UNTIL_LAYER = "fc2";
     
     
-    public RunnableImageNetVGG16(String dataSavePath) {
+    public AnimalClassificationVGG16ModelTrainer(String dataSavePath) {
     	DATA_PATH = dataSavePath;
     	TRAIN_FOLDER = DATA_PATH + "/train_both";
         TEST_FOLDER = DATA_PATH + "/test_both";
         SAVING_PATH = DATA_PATH + "/saved/modelIteration_";
 	}
 	
-	@Override
-	public void run() {
-		try {
-			init();
-			trainModel();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-
-	}
-	
-	private void init() throws IOException {
+	public void initPreTrainedModelWithTransferLearning() throws IOException {
 		ZooModel zooModel = VGG16.builder().build();
 		
 		preTrainedNet = (ComputationGraph) zooModel.initPretrained(PretrainedType.IMAGENET);
@@ -112,7 +101,7 @@ public class RunnableImageNetVGG16 implements Runnable {
 		}
 	}
 	
-	private void trainModel() throws IOException {		
+	public void trainModel() throws IOException {		
 		if (preTrainedNet != null) {
 			 // Define the File Paths
 	        File trainData = new File(TRAIN_FOLDER);

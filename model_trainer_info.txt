@@ -1,0 +1,17 @@
+Commands to package the model_train_tool Maven Project to a executable JAR file with dependencies in it:
+
+- Pre-requisite, folders need to be in place for our program to save data to:
+1. Create a folder called "image_recognition_model
+- First use Maven to compile and package the JAR file:
+Cmd:
+1. mvn clean
+	* Cleans the target folder, where the packaged JAR file (and other related files) will be generated
+2. mvn compile
+	* Compiles our project
+3. mvn assembly:single
+	* Packages the whole project with all dependencies in one single JAR fiel. Located in "model_train_tool/target/model-train-tool-jar-with-dependencies.jar"
+
+- Executing our picocli program from JAR
+Cmd:
+1. java -cp target/model-train-tool-jar-with-dependencies.jar com.image.net.model_train_tool.ModelTrainerTool
+	* Runs our program
