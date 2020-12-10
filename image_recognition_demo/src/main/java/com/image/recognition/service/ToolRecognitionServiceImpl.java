@@ -103,12 +103,10 @@ private final static Logger LOGGER = Logger.getLogger(ImageRecognitionServiceImp
 	@Override
 	public Optional<Entry<ToolType, Double>> getToolWithHighestProbabilityFromPredictions(Map<ToolType, Double> predictions, Double threshold) {
 		
-		Entry<ToolType, Double> toolWithHighestProbability = predictions.entrySet()
+		Optional<Entry<ToolType, Double>> optToolWithHighestProbability = predictions.entrySet()
 			.stream()
 			.filter(e -> e.getValue() > threshold)
-			.max(Comparator.comparingDouble(Entry::getValue))
-			.get();
-		Optional<Entry<ToolType, Double>> optToolWithHighestProbability = Optional.of(toolWithHighestProbability);
+			.max(Comparator.comparingDouble(Entry::getValue));
 		return optToolWithHighestProbability;
 	}
 	
