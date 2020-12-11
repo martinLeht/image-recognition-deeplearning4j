@@ -27,7 +27,7 @@ import javafx.util.Pair;
 @Service
 public class ToolRecognitionServiceImpl implements ToolRecognitionService {
 	
-private final static Logger LOGGER = Logger.getLogger(ImageRecognitionServiceImpl.class.getName());
+private final static Logger LOGGER = Logger.getLogger(ToolRecognitionServiceImpl.class.getName());
 	
 	private static final String TRAINED_PATH_MODEL = "src/main/resources/saved/modelvgg16.zip";
     private static ComputationGraph computationGraph;

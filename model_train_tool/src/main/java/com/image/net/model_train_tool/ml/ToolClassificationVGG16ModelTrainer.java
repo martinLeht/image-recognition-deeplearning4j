@@ -51,7 +51,7 @@ import org.nd4j.linalg.lossfunctions.LossFunctions;
 
 public class ToolClassificationVGG16ModelTrainer implements IModelTrainer {
 
-	private final static Logger LOGGER = Logger.getLogger(AnimalClassificationVGG16ModelTrainer.class.getName());
+	private final static Logger LOGGER = Logger.getLogger(ToolClassificationVGG16ModelTrainer.class.getName());
 
 	/* Model data locations */
 	public static String DATA_PATH;
@@ -99,8 +99,8 @@ public class ToolClassificationVGG16ModelTrainer implements IModelTrainer {
 	@Override
 	public void initPreTrainedModelWithTransferLearning() throws IOException {
 		
-		//ZooModel zooModel = VGG16.builder().build();
-		ZooModel zooModel = Xception.builder().build();
+		ZooModel zooModel = VGG16.builder().build();
+		//ZooModel zooModel = Xception.builder().build();
 
 		preTrainedNet = (ComputationGraph) zooModel.initPretrained(PretrainedType.IMAGENET);
 		LOGGER.info(preTrainedNet.summary());
