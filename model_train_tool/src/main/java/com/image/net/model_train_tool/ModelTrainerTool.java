@@ -44,10 +44,7 @@ public class ModelTrainerTool implements Runnable {
 	@Override
 	public void run() {
 		IModelTrainer modelTrainer = new ToolClassificationVGG16ModelTrainer(dataSaveLocation);
-		try {
-			//modelTrainer.init();
-			//modelTrainer.trainModel();
-			
+		try {			
 			modelTrainer.initPreTrainedModelWithTransferLearning();
 			modelTrainer.trainPretrainedModel();
 		} catch (IOException e) {

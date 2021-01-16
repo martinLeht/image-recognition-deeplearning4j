@@ -5,7 +5,9 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.logging.FileHandler;
 import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 
 import org.datavec.api.io.filters.BalancedPathFilter;
 import org.datavec.api.io.labels.ParentPathLabelGenerator;
@@ -51,7 +53,10 @@ import org.nd4j.linalg.lossfunctions.LossFunctions;
 
 public class ToolClassificationVGG16ModelTrainer implements IModelTrainer {
 
+	/* Logging */
 	private final static Logger LOGGER = Logger.getLogger(ToolClassificationVGG16ModelTrainer.class.getName());
+	FileHandler modelTrainerLogFileHandler;
+	public static String LOG_PATH;
 
 	/* Model data locations */
 	public static String DATA_PATH;
@@ -73,7 +78,7 @@ public class ToolClassificationVGG16ModelTrainer implements IModelTrainer {
 	public static BalancedPathFilter PATH_FILTER = new BalancedPathFilter(RAND_NUM_GEN, ALLOWED_FORMATS,
 			LABEL_GENERATOR_MAKER);
 
-	/* Input Data Dimensions */
+	/* Input Tensor Dimensions */
 	private static final int HEIGHT = 224;
 	private static final int WIDTH = 224;
 	private static final int CHANNELS = 3;
@@ -90,17 +95,33 @@ public class ToolClassificationVGG16ModelTrainer implements IModelTrainer {
 
 	public ToolClassificationVGG16ModelTrainer(String dataSavePath) {
 		DATA_PATH = dataSavePath;
+		LOG_PATH = DATA_PATH + "/log";
 		TRAIN_FOLDER = DATA_PATH + "/tool_data/train_all";
 		TEST_FOLDER = DATA_PATH + "/tool_data/test_all";
 		MODEL_VGG16_SAVING_PATH = DATA_PATH + "/tool_data/saved/modelvgg16";
 		MULTILAYER_SAVING_PATH = DATA_PATH + "/tool_data/saved/multilayer_model";
+		
+		/* Setting up the logger */
+		try {
+			modelTrainerLogFileHandler = new FileHandler(LOG_PATH, true);
+			LOGGER.addHandler(modelTrainerLogFileHandler);
+ 
+			// Print the LogRecord in a human readable format.
+			SimpleFormatter formatter = new SimpleFormatter();	
+			modelTrainerLogFileHandler.setFormatter(formatter);
+		} catch (SecurityException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+ 
 	}
+	
 
 	@Override
 	public void initPreTrainedModelWithTransferLearning() throws IOException {
 		
 		ZooModel zooModel = VGG16.builder().build();
-		//ZooModel zooModel = Xception.builder().build();
 
 		preTrainedNet = (ComputationGraph) zooModel.initPretrained(PretrainedType.IMAGENET);
 		LOGGER.info(preTrainedNet.summary());
@@ -131,11 +152,13 @@ public class ToolClassificationVGG16ModelTrainer implements IModelTrainer {
 			vgg16Transfer.setListeners(new ScoreIterationListener(20));
 
 			LOGGER.info(vgg16Transfer.summary());
+		} else {
+			LOGGER.info("Something went wrong with the initialization of the model.");
 		}
 	}
 
 	@Override
-	public void init() throws IOException {
+	public void initFromScratch() throws IOException {
 		Nesterovs nesterovsUpdater = new Nesterovs();
 		nesterovsUpdater.setLearningRate(5e-5);
 		MultiLayerConfiguration multiLayerConf = new NeuralNetConfiguration.Builder()
@@ -189,6 +212,7 @@ public class ToolClassificationVGG16ModelTrainer implements IModelTrainer {
 				.build();
 	}
 
+	@Override
 	public void trainPretrainedModel() throws IOException {
 		if (preTrainedNet != null) {
 			// Define the File Paths
@@ -219,11 +243,15 @@ public class ToolClassificationVGG16ModelTrainer implements IModelTrainer {
 			ModelSerializer.writeModel(vgg16Transfer, new File(MODEL_VGG16_SAVING_PATH + ".zip"),
 					false);
 			evalPretrainedModelOn(testIterator, iEpoch);
+		} else {
+			LOGGER.info("Model needs to be initialized before training. "
+					+ "Run ToolClassificationVGG16ModelTrainer.initPreTrainedModelWithTransferLearning() and try training again.");
 		}
 
 	}
 
-	public void trainModel() throws IOException {
+	@Override
+	public void trainModelFromScratch() throws IOException {
 		if (multiLayerNetwork != null) {
 			// Define data sets
 			File trainData = new File(TRAIN_FOLDER);
@@ -257,6 +285,9 @@ public class ToolClassificationVGG16ModelTrainer implements IModelTrainer {
 			}
 			multiLayerNetwork.save(new File(MULTILAYER_SAVING_PATH + ".zip"), false);
 			evalMultiLayerModelOn(testIterator, iEpoch);
+		} else {
+			LOGGER.info("Model needs to be initialized before training. "
+					+ "Run ToolClassificationVGG16ModelTrainer.initFromScratch() and try training again.");
 		}
 
 	}

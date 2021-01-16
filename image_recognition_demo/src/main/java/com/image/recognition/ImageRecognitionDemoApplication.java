@@ -20,7 +20,7 @@ public class ImageRecognitionDemoApplication {
 	
 	
 	public static void main(String[] args) throws IOException, InterruptedException {
-		File model = new File("src/main/resources/saved/modelvgg16.zip");
+		File model = new File("src/main/resources/saved/tool_modelvgg16.zip");
 		if (!model.exists() || FileUtils.checksum(model, new Adler32()).getValue() != 3082129141l) {
             model.delete();
             

@@ -3,29 +3,35 @@ package com.image.net.model_train_tool.ml;
 import java.io.IOException;
 
 public interface IModelTrainer {
-	/*
-	 * Initializes the pre-trained ZooModel
-	 * Transfers learning from pre-trained model to our own VGG16 model
-	 * Handles Fine tune configuration of our model
+	/**
+	 * Initializes the pre-trained ZooModel.
+	 * <br>Transfers learning from pre-trained model to the new VGG16 based model.
+	 * <br>Handles Fine-tune configuration of the new model.
 	 */
 	public void initPreTrainedModelWithTransferLearning() throws IOException;
 	
-	/*
-	 * Initializes a MultiLayer CNN
+	/**
+	 * Initializes a MultiLayer CNN from scratch.
 	 */
-	public void init() throws IOException;
+	public void initFromScratch() throws IOException;
 	
-	/*
-	 * Performas the training of our model
-	 * Saves and evaluates the model while training according to SAVING_INTERVAL 
-	 * Finally evaluates and saves when converged through last epoch
+	/**
+	 * Performs the training of the model.
+	 * <br>IMPORTANT: Run method IModelTrainer.initPreTrainedModelWithTransferLearning() before training!
+	 * <p>
+	 * Pipeline:
+	 * <br>- Saves and evaluates the model while training according to SAVING_INTERVAL 
+	 * <br>- Finally evaluates and saves the model as .zip file when converged through last epoch
 	 */
 	public void trainPretrainedModel() throws IOException;
 	
-	/*
-	 * Performas the training of our model
-	 * Saves and evaluates the model while training according to SAVING_INTERVAL 
-	 * Finally evaluates and saves when converged through last epoch
+	/**
+	 * Performs the training of the model.
+	 * <br>IMPORTANT: Run method IModelTrainer.initFromScratch() before training!
+	 * <p>
+	 * Pipeline:
+	 * <br>- Saves and evaluates the model while training according to SAVING_INTERVAL 
+	 * <br>- Finally evaluates and saves the model as .zip file when converged through last epoch
 	 */
-	public void trainModel() throws IOException;
+	public void trainModelFromScratch() throws IOException;
 }
