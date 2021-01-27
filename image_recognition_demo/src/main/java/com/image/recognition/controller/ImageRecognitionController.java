@@ -27,17 +27,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.image.net.model_train_tool.ml.AnimalType;
 import com.image.net.model_train_tool.ml.ToolType;
-import com.image.recognition.dto.AnimalDTO;
 import com.image.recognition.dto.ToolClassificationDTO;
 import com.image.recognition.dto.ToolDTO;
 import com.image.recognition.exception.FileMissingException;
 import com.image.recognition.exception.InvalidFileFormatException;
-import com.image.recognition.service.ImageRecognitionService;
 import com.image.recognition.service.ToolRecognitionService;
 
-import javafx.util.Pair;
 
 @RestController
 @RequestMapping("/api")
@@ -49,10 +45,8 @@ public class ImageRecognitionController {
 	private static final Double RECOGNITION_THRESHOLD = 0.5;
 
 	@Autowired
-	private ImageRecognitionService imageRecognitionService;
-
-	@Autowired
 	private ToolRecognitionService toolRecognitionService;
+	
 
 	@GetMapping("/tools/detect")
 	public ToolClassificationDTO getToolClassification(@RequestParam("imageFile") MultipartFile imageFile)
@@ -94,51 +88,12 @@ public class ImageRecognitionController {
 		}
 	}
 	
+	
 	@GetMapping("/tools/labels")
 	public CollectionModel<ToolType> getToolLabels() {
 		List<ToolType> toolLabels = Arrays.asList(ToolType.values());
 		Link selfRelLink = linkTo(ImageRecognitionController.class).withSelfRel();
 		CollectionModel<ToolType> labels = CollectionModel.of(toolLabels, selfRelLink);
-		return labels;
-	}
-
-	@GetMapping("/animals/detect")
-	public AnimalDTO getAnimalClassification(@RequestParam("imageFile") MultipartFile imageFile) throws IOException {
-		if (imageFile != null && !imageFile.isEmpty()) {
-			LOGGER.info("Type of image file: " + imageFile.getContentType());
-			if (isFileFormatAllowed(imageFile)) {
-				File file = convertMultipartFileToFile(imageFile);
-				Pair<AnimalType, Double> typeOfAnimal = imageRecognitionService.detectAnimal(file, 0.5);
-
-				file.delete();
-
-				LOGGER.info(typeOfAnimal.getKey().getType());
-				LOGGER.info(typeOfAnimal.getValue().toString());
-
-				AnimalDTO animalDto = new AnimalDTO(typeOfAnimal.getKey(), typeOfAnimal.getValue());
-
-				/* Adding links to related endpoints and self */
-				WebMvcLinkBuilder linkToClassificationLabels = linkTo(methodOn(this.getClass()).getAnimalLabels());
-				Link selfRelLink = linkTo(ImageRecognitionController.class).withSelfRel();
-				animalDto.add(selfRelLink);
-				animalDto.add(linkToClassificationLabels.withRel("all-classification-labels"));
-
-				return animalDto;
-			} else {
-				throw new InvalidFileFormatException(
-						"Invalid file format. Allowed formats: tif, jpg, png, jpeg, bmp, JPEG, JPG, TIF, PNG");
-			}
-		} else {
-			throw new FileMissingException("No file provided in request.");
-		}
-
-	}
-	
-	@GetMapping("/animals/labels")
-	public CollectionModel<AnimalType> getAnimalLabels() {
-		List<AnimalType> animalLabels = Arrays.asList(AnimalType.values());
-		Link selfRelLink = linkTo(ImageRecognitionController.class).withSelfRel();
-		CollectionModel<AnimalType> labels = CollectionModel.of(animalLabels, selfRelLink);
 		return labels;
 	}
 	

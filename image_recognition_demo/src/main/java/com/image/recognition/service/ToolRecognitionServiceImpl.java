@@ -10,29 +10,37 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.logging.Logger;
 
+import javax.annotation.PostConstruct;
+
 import org.datavec.image.loader.NativeImageLoader;
 import org.deeplearning4j.nn.graph.ComputationGraph;
-import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.util.ModelSerializer;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.api.preprocessor.DataNormalization;
 import org.nd4j.linalg.dataset.api.preprocessor.VGG16ImagePreProcessor;
 import org.springframework.stereotype.Service;
 
-import com.image.net.model_train_tool.ml.AnimalType;
 import com.image.net.model_train_tool.ml.ToolType;
 
-import javafx.util.Pair;
 
 @Service
 public class ToolRecognitionServiceImpl implements ToolRecognitionService {
 	
 private final static Logger LOGGER = Logger.getLogger(ToolRecognitionServiceImpl.class.getName());
 	
-	private static final String TRAINED_PATH_MODEL = "src/main/resources/saved/modelvgg16.zip";
-    private static ComputationGraph computationGraph;
-    
+	private static final String TRAINED_MODEL_PATH = "src/main/resources/saved/tool_modelvgg16.zip";
     private static final int OUTPUT_LABELS = 8;
+    
+    private static ComputationGraph computationGraph;
+    private DataNormalization scaler;
+    private NativeImageLoader imageLoader;
+    
+    @PostConstruct
+    public void init() {
+    	scaler = new VGG16ImagePreProcessor();
+    	/* VGG16 model input dimensions */
+    	imageLoader = new NativeImageLoader(224, 224, 3);
+    }
 	
 	@Override
 	public Map<ToolType, Double> detectTool(File file) throws IOException {
@@ -42,9 +50,7 @@ private final static Logger LOGGER = Logger.getLogger(ToolRecognitionServiceImpl
 		
 		computationGraph.init();
         LOGGER.info(computationGraph.summary());
-        NativeImageLoader loader = new NativeImageLoader(224, 224, 3);
-        INDArray image = loader.asMatrix(new FileInputStream(file));
-        DataNormalization scaler = new VGG16ImagePreProcessor();
+        INDArray image = imageLoader.asMatrix(new FileInputStream(file));
         scaler.transform(image);
         
         INDArray output = computationGraph.outputSingle(false, image);
@@ -52,7 +58,7 @@ private final static Logger LOGGER = Logger.getLogger(ToolRecognitionServiceImpl
 	}
 	
 	private ComputationGraph loadModel() throws IOException {
-		computationGraph = ModelSerializer.restoreComputationGraph(new File(TRAINED_PATH_MODEL));
+		computationGraph = ModelSerializer.restoreComputationGraph(new File(TRAINED_MODEL_PATH));
         return computationGraph;
     }
 	

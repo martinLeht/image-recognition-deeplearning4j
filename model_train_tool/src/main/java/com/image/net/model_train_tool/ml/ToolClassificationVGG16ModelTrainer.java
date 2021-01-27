@@ -18,40 +18,44 @@ import org.datavec.image.loader.NativeImageLoader;
 import org.datavec.image.recordreader.ImageRecordReader;
 import org.datavec.image.transform.FlipImageTransform;
 import org.datavec.image.transform.ImageTransform;
+import org.datavec.image.transform.RotateImageTransform;
 import org.datavec.image.transform.WarpImageTransform;
 import org.deeplearning4j.datasets.datavec.RecordReaderDataSetIterator;
 import org.deeplearning4j.nn.api.OptimizationAlgorithm;
-import org.deeplearning4j.nn.conf.BackpropType;
-import org.deeplearning4j.nn.conf.MultiLayerConfiguration;
-import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
-import org.deeplearning4j.nn.conf.inputs.InputType;
-import org.deeplearning4j.nn.conf.layers.ConvolutionLayer;
+import org.deeplearning4j.nn.conf.distribution.NormalDistribution;
 import org.deeplearning4j.nn.conf.layers.DenseLayer;
+import org.deeplearning4j.nn.conf.layers.Layer;
 import org.deeplearning4j.nn.conf.layers.OutputLayer;
-import org.deeplearning4j.nn.conf.layers.SubsamplingLayer;
 import org.deeplearning4j.nn.graph.ComputationGraph;
-import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.transferlearning.FineTuneConfiguration;
 import org.deeplearning4j.nn.transferlearning.TransferLearning;
+import org.deeplearning4j.nn.transferlearning.TransferLearningHelper;
 import org.deeplearning4j.nn.weights.WeightInit;
+import org.deeplearning4j.nn.weights.WeightInitDistribution;
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
 import org.deeplearning4j.util.ModelSerializer;
 import org.deeplearning4j.zoo.PretrainedType;
 import org.deeplearning4j.zoo.ZooModel;
 import org.deeplearning4j.zoo.model.VGG16;
-import org.deeplearning4j.zoo.model.Xception;
 import org.nd4j.evaluation.classification.Evaluation;
 import org.nd4j.linalg.activations.Activation;
+import org.nd4j.linalg.dataset.AsyncDataSetIterator;
 import org.nd4j.linalg.dataset.DataSet;
+import org.nd4j.linalg.dataset.ExistingMiniBatchDataSetIterator;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
-import org.nd4j.linalg.dataset.api.preprocessor.DataNormalization;
-import org.nd4j.linalg.dataset.api.preprocessor.ImagePreProcessingScaler;
 import org.nd4j.linalg.dataset.api.preprocessor.VGG16ImagePreProcessor;
+import org.nd4j.linalg.factory.Nd4j;
+import org.nd4j.linalg.indexing.BooleanIndexing;
+import org.nd4j.linalg.indexing.conditions.Conditions;
 import org.nd4j.linalg.learning.config.Nesterovs;
-import org.nd4j.linalg.learning.config.Sgd;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
+import org.nd4j.linalg.profiler.ProfilerConfig;
 
 public class ToolClassificationVGG16ModelTrainer implements IModelTrainer {
+
+	enum DataSetType {
+		TRAIN, VALID, TEST
+	}
 
 	/* Logging */
 	private final static Logger LOGGER = Logger.getLogger(ToolClassificationVGG16ModelTrainer.class.getName());
@@ -63,34 +67,35 @@ public class ToolClassificationVGG16ModelTrainer implements IModelTrainer {
 	public static String TRAIN_FOLDER;
 	public static String TEST_FOLDER;
 	public static String MODEL_VGG16_SAVING_PATH;
-	public static String MULTILAYER_SAVING_PATH;
+	// public static String MULTILAYER_SAVING_PATH;
 
-	private ComputationGraph preTrainedNet;
+	/* For pretrained and transfer learning model */
 	private ComputationGraph vgg16Transfer;
-
-	private MultiLayerNetwork multiLayerNetwork;
 
 	/* Model Training parameters */
 	private static final long seed = 12345;
-	public static final Random RAND_NUM_GEN = new Random(seed);
+	private static final long seed2 = 54321;
+	public static final Random RNG = new Random(seed);
+	public static final Random RNG_2 = new Random(seed2);
 	public static ParentPathLabelGenerator LABEL_GENERATOR_MAKER = new ParentPathLabelGenerator();
 	public static final String[] ALLOWED_FORMATS = BaseImageLoader.ALLOWED_FORMATS;
-	public static BalancedPathFilter PATH_FILTER = new BalancedPathFilter(RAND_NUM_GEN, ALLOWED_FORMATS,
-			LABEL_GENERATOR_MAKER);
+	public static BalancedPathFilter PATH_FILTER = new BalancedPathFilter(RNG, ALLOWED_FORMATS, LABEL_GENERATOR_MAKER);
 
 	/* Input Tensor Dimensions */
 	private static final int HEIGHT = 224;
 	private static final int WIDTH = 224;
 	private static final int CHANNELS = 3;
 
-	/* Parameters for our training phase */
-	private static final int EPOCH = 5;
+	/* Parameters for training phase */
+	private static final int EPOCH = 3;
 	private static final int BATCH_SIZE = 16;
 	private static final int TRAIN_SIZE = 80;
-	private static final int OUTPUT_LABELS = 8;
+	private static final int NUM_OUTPUT_LABELS = 8;
 
-	private static final int EVAL_INTERVAL = 20;
+	/* Interval for how often model is evaluated while training */
+	private static final int EVAL_INTERVAL = 10;
 
+	/* Layers freezed until this layer, weights are kept fixed while training */
 	private static final String FREEZE_UNTIL_LAYER = "fc2";
 
 	public ToolClassificationVGG16ModelTrainer(String dataSavePath) {
@@ -98,58 +103,67 @@ public class ToolClassificationVGG16ModelTrainer implements IModelTrainer {
 		LOG_PATH = DATA_PATH + "/log";
 		TRAIN_FOLDER = DATA_PATH + "/tool_data/train_all";
 		TEST_FOLDER = DATA_PATH + "/tool_data/test_all";
-		MODEL_VGG16_SAVING_PATH = DATA_PATH + "/tool_data/saved/modelvgg16";
-		MULTILAYER_SAVING_PATH = DATA_PATH + "/tool_data/saved/multilayer_model";
-		
+		MODEL_VGG16_SAVING_PATH = DATA_PATH + "/saved";
+
+		/* Create directories if they dont exist */
+		File modelSavingDir = new File(MODEL_VGG16_SAVING_PATH);
+		if (!modelSavingDir.exists()) {
+			modelSavingDir.mkdir();
+		}
+
+		File logDir = new File(LOG_PATH);
+		if (!logDir.exists()) {
+			logDir.mkdir();
+		}
+
 		/* Setting up the logger */
 		try {
-			modelTrainerLogFileHandler = new FileHandler(LOG_PATH, true);
+			modelTrainerLogFileHandler = new FileHandler(LOG_PATH + "/model_trainer_app.log");
 			LOGGER.addHandler(modelTrainerLogFileHandler);
- 
+
 			// Print the LogRecord in a human readable format.
-			SimpleFormatter formatter = new SimpleFormatter();	
+			SimpleFormatter formatter = new SimpleFormatter();
 			modelTrainerLogFileHandler.setFormatter(formatter);
 		} catch (SecurityException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
- 
+
 	}
-	
 
 	@Override
 	public void initPreTrainedModelWithTransferLearning() throws IOException {
-		
-		ZooModel zooModel = VGG16.builder().build();
 
-		preTrainedNet = (ComputationGraph) zooModel.initPretrained(PretrainedType.IMAGENET);
-		LOGGER.info(preTrainedNet.summary());
+		ZooModel zooModel = VGG16.builder().build();
+		ComputationGraph preTrainedNet = (ComputationGraph) zooModel.initPretrained(PretrainedType.IMAGENET);
 
 		if (preTrainedNet != null) {
-			Nesterovs nesterovsUpdater = new Nesterovs();
-			nesterovsUpdater.setLearningRate(5e-5);
+			LOGGER.info(preTrainedNet.summary());
 
 			FineTuneConfiguration fineTuneConf = new FineTuneConfiguration.Builder()
 					.optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
-					.updater(nesterovsUpdater)
+					.updater(new Nesterovs(5e-4, Nesterovs.DEFAULT_NESTEROV_MOMENTUM))
 					.seed(seed)
 					.build();
 
-			vgg16Transfer = new TransferLearning.GraphBuilder(preTrainedNet)
-					.fineTuneConfiguration(fineTuneConf)
+			/*
+			 * no new layers, except output
+			 */
+			vgg16Transfer = new TransferLearning.GraphBuilder(preTrainedNet).fineTuneConfiguration(fineTuneConf)
 					.setFeatureExtractor(FREEZE_UNTIL_LAYER)
 					.removeVertexKeepConnections("predictions")
 					.addLayer("predictions",
 							new OutputLayer.Builder(LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD)
 									.nIn(4096)
-									.nOut(OUTPUT_LABELS)
+									.nOut(NUM_OUTPUT_LABELS)
 									.weightInit(WeightInit.XAVIER)
 									.activation(Activation.SOFTMAX)
-									.build(),
+								.build(),
 							FREEZE_UNTIL_LAYER)
 					.build();
-			vgg16Transfer.setListeners(new ScoreIterationListener(20));
+
+			vgg16Transfer.setListeners(new ScoreIterationListener(5));
 
 			LOGGER.info(vgg16Transfer.summary());
 		} else {
@@ -157,74 +171,29 @@ public class ToolClassificationVGG16ModelTrainer implements IModelTrainer {
 		}
 	}
 
-	@Override
-	public void initFromScratch() throws IOException {
-		Nesterovs nesterovsUpdater = new Nesterovs();
-		nesterovsUpdater.setLearningRate(5e-5);
-		MultiLayerConfiguration multiLayerConf = new NeuralNetConfiguration.Builder()
-				.seed(seed)
-				.l2(0.005)
-				.activation(Activation.RELU)
-				.weightInit(WeightInit.XAVIER)
-				.optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
-				.updater(nesterovsUpdater)
-				.list()
-				.layer(0, convInit("cnn1", CHANNELS, 50, new int[] { 5, 5 }, new int[] { 1, 1 }, new int[] { 0, 0 }, 0))
-				.layer(1, maxPool("maxpool1", new int[] { 2, 2 }))
-				.layer(2, conv5x5("cnn2", 100, new int[] { 5, 5 }, new int[] { 1, 1 }, 0))
-				.layer(3, maxPool("maxool2", new int[] { 2, 2 }))
-				.layer(4, new DenseLayer.Builder()
-							.nOut(500)
-							.build())
-				.layer(5,
-						new OutputLayer.Builder(LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD)
-							.nOut(OUTPUT_LABELS)
-							.activation(Activation.SOFTMAX)
-							.build())
-				.setInputType(InputType.convolutional(HEIGHT, WIDTH, CHANNELS))
-				.backpropType(BackpropType.Standard)
-				.build();
-
-		multiLayerNetwork = new MultiLayerNetwork(multiLayerConf);
-	}
-
-	private ConvolutionLayer convInit(String name, int in, int out, int[] kernel, int[] stride, int[] pad,
-			double bias) {
-		return new ConvolutionLayer.Builder(kernel, stride, pad)
-				.name(name)
-				.nIn(in)
-				.nOut(out)
-				.biasInit(bias)
+	private Layer createOutputLayer(int nIn, int nOut) {
+		return new OutputLayer.Builder(LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD)
+					.nIn(nIn)
+					.nOut(nOut)
+					.activation(Activation.SOFTMAX)
 				.build();
 	}
-
-	private ConvolutionLayer conv5x5(String name, int out, int[] stride, int[] pad, double bias) {
-		return new ConvolutionLayer.Builder(new int[] { 5, 5 }, stride, pad)
-				.name(name)
-				.nOut(out)
-				.biasInit(bias)
-				.build();
-	}
-
-	private SubsamplingLayer maxPool(String name, int[] kernel) {
-		return new SubsamplingLayer.Builder(kernel, new int[] { 2, 2 })
-				.name(name)
-				.build();
-	}
-
+	
+	
 	@Override
 	public void trainPretrainedModel() throws IOException {
-		if (preTrainedNet != null) {
+		if (vgg16Transfer != null) {
+
 			// Define the File Paths
 			File trainData = new File(TRAIN_FOLDER);
 			File testData = new File(TEST_FOLDER);
-			FileSplit train = new FileSplit(trainData, NativeImageLoader.ALLOWED_FORMATS, RAND_NUM_GEN);
-			FileSplit test = new FileSplit(testData, NativeImageLoader.ALLOWED_FORMATS, RAND_NUM_GEN);
+			FileSplit train = new FileSplit(trainData, NativeImageLoader.ALLOWED_FORMATS, RNG);
+			FileSplit test = new FileSplit(testData, NativeImageLoader.ALLOWED_FORMATS, RNG);
 
-			InputSplit[] sample = train.sample(PATH_FILTER, TRAIN_SIZE, 100 - TRAIN_SIZE);
-			DataSetIterator trainIterator = getDataSetIterator(sample[0], true, true);
-			DataSetIterator devIterator = getDataSetIterator(sample[1], false, true);
-			DataSetIterator testIterator = getDataSetIterator(test.sample(PATH_FILTER, 1, 0)[0], false, true);
+			InputSplit[] trainDataSample = train.sample(PATH_FILTER, TRAIN_SIZE, 100 - TRAIN_SIZE);
+			DataSetIterator trainIterator = getDataSetIterator(trainDataSample[0], true);
+			DataSetIterator validIterator = getDataSetIterator(trainDataSample[1], false);
+			DataSetIterator testIterator = getDataSetIterator(test.sample(PATH_FILTER, 1, 0)[0], false);
 
 			int iEpoch = 0;
 			int i = 0;
@@ -233,16 +202,16 @@ public class ToolClassificationVGG16ModelTrainer implements IModelTrainer {
 					DataSet trained = trainIterator.next();
 					vgg16Transfer.fit(trained);
 					if (i % EVAL_INTERVAL == 0 && i != 0) {
-						evalPretrainedModelOn(devIterator, i);
+						evalModelOn(validIterator, i);
 					}
 					i++;
 				}
 				trainIterator.reset();
 				iEpoch++;
+				evalModelOn(testIterator, iEpoch);
 			}
-			ModelSerializer.writeModel(vgg16Transfer, new File(MODEL_VGG16_SAVING_PATH + ".zip"),
-					false);
-			evalPretrainedModelOn(testIterator, iEpoch);
+			ModelSerializer.writeModel(vgg16Transfer,
+					new File(MODEL_VGG16_SAVING_PATH + "/tool_classification_model_vgg16.zip"), false);
 		} else {
 			LOGGER.info("Model needs to be initialized before training. "
 					+ "Run ToolClassificationVGG16ModelTrainer.initPreTrainedModelWithTransferLearning() and try training again.");
@@ -250,92 +219,35 @@ public class ToolClassificationVGG16ModelTrainer implements IModelTrainer {
 
 	}
 
-	@Override
-	public void trainModelFromScratch() throws IOException {
-		if (multiLayerNetwork != null) {
-			// Define data sets
-			File trainData = new File(TRAIN_FOLDER);
-			File testData = new File(TEST_FOLDER);
-			FileSplit train = new FileSplit(trainData, NativeImageLoader.ALLOWED_FORMATS, RAND_NUM_GEN);
-			FileSplit test = new FileSplit(testData, NativeImageLoader.ALLOWED_FORMATS, RAND_NUM_GEN);
-
-			InputSplit[] sample = train.sample(PATH_FILTER, TRAIN_SIZE, 100 - TRAIN_SIZE);
-			DataSetIterator trainIterator = getDataSetIterator(sample[0], true, false);
-			DataSetIterator devIterator = getDataSetIterator(sample[1], false, false);
-			DataSetIterator testIterator = getDataSetIterator(test.sample(PATH_FILTER, 1, 0)[0], false, false);
-			
-			int iEpoch = 0;
-			int i = 0;
-			while (iEpoch < EPOCH) {
-				while (trainIterator.hasNext()) {
-					DataSet trained = trainIterator.next();
-					multiLayerNetwork.fit(trained);
-					
-					if (i % EVAL_INTERVAL == 0 && i != 0) {
-						//multiLayerNetwork.save(new File(MULTILAYER_SAVING_PATH + "_iter_" + i + "_epoch_" + iEpoch + ".zip"), false);
-						evalMultiLayerModelOn(devIterator, i);
-					}
-					i++;
-					
-				}
-				trainIterator.reset();
-				//multiLayerNetwork.save(new File(MULTILAYER_SAVING_PATH + "_iter_" + i + "_epoch_" + iEpoch + ".zip"), false);
-				iEpoch++;
-				//evalMultiLayerModelOn(testIterator, iEpoch);
-			}
-			multiLayerNetwork.save(new File(MULTILAYER_SAVING_PATH + ".zip"), false);
-			evalMultiLayerModelOn(testIterator, iEpoch);
-		} else {
-			LOGGER.info("Model needs to be initialized before training. "
-					+ "Run ToolClassificationVGG16ModelTrainer.initFromScratch() and try training again.");
-		}
-
-	}
-
-	private void evalPretrainedModelOn(DataSetIterator testIterator, int iEpoch)
-			throws IOException {
-		LOGGER.info("Evaluate model at iteration " + iEpoch + " ....");
-		Evaluation eval = vgg16Transfer.evaluate(testIterator);
+	private void evalModelOn(DataSetIterator iterator, int iter) throws IOException {
+		LOGGER.info("Evaluate model at iteration " + iter + " ....");
+		Evaluation eval = vgg16Transfer.evaluate(iterator);
 		LOGGER.info(eval.stats());
-		testIterator.reset();
-	}
-	
-	private void evalMultiLayerModelOn(DataSetIterator testIterator, int iEpoch)
-			throws IOException {
-		LOGGER.info("Evaluate model at iteration " + iEpoch + " ....");
-		Evaluation eval = multiLayerNetwork.evaluate(testIterator);
-		LOGGER.info(eval.stats());
-		testIterator.reset();
+		iterator.reset();
 	}
 
-	public DataSetIterator getDataSetIterator(InputSplit sample, boolean withDataAugmentation,
-			boolean forVGG16) throws IOException {
+	public DataSetIterator getDataSetIterator(InputSplit sample, boolean withDataAugmentation) throws IOException {
 		ImageRecordReader imageRecordReader = new ImageRecordReader(HEIGHT, WIDTH, CHANNELS, LABEL_GENERATOR_MAKER);
+		imageRecordReader.initialize(sample);
 		if (withDataAugmentation) {
 			List<ImageTransform> transforms = dataAugmentation();
 			for (ImageTransform transform : transforms) {
 				imageRecordReader.initialize(sample, transform);
 			}
-		} else {
-			imageRecordReader.initialize(sample);
 		}
 
-		DataSetIterator iterator = new RecordReaderDataSetIterator(imageRecordReader, BATCH_SIZE, 1, OUTPUT_LABELS);
-		if (forVGG16) {
-			iterator.setPreProcessor(new VGG16ImagePreProcessor());
-		} else {
-			DataNormalization scaler = new ImagePreProcessingScaler(0, 1);
-			scaler.fit(iterator);
-			iterator.setPreProcessor(scaler);
-		}
+		DataSetIterator iterator = new RecordReaderDataSetIterator(imageRecordReader, BATCH_SIZE, 1, NUM_OUTPUT_LABELS);
+		iterator.setPreProcessor(new VGG16ImagePreProcessor());
 		return iterator;
 	}
-	
+
 	private List<ImageTransform> dataAugmentation() {
-		ImageTransform flipTransform1 = new FlipImageTransform(RAND_NUM_GEN);
-		ImageTransform flipTransform2 = new FlipImageTransform(new Random(123));
-		ImageTransform warpTransform = new WarpImageTransform(RAND_NUM_GEN, 42);
-		return Arrays.asList(new ImageTransform[] { flipTransform1, warpTransform, flipTransform2 });
+		ImageTransform flipTransform1 = new FlipImageTransform(RNG);
+		ImageTransform flipTransform2 = new FlipImageTransform(RNG_2);
+		ImageTransform warpTransform = new WarpImageTransform(RNG, 42);
+		ImageTransform rotationTransform = new RotateImageTransform(RNG, 90);
+
+		return Arrays.asList(new ImageTransform[] { flipTransform1, warpTransform, flipTransform2, rotationTransform });
 	}
 
 }

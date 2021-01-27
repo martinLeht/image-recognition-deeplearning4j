@@ -3,7 +3,6 @@ package com.image.net.model_train_tool;
 import java.io.IOException;
 
 import com.image.net.model_train_tool.ml.IModelTrainer;
-import com.image.net.model_train_tool.ml.AnimalClassificationVGG16ModelTrainer;
 import com.image.net.model_train_tool.ml.ToolClassificationVGG16ModelTrainer;
 
 import picocli.CommandLine;
@@ -11,25 +10,28 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
 
-
 /**
- * A commandline program to train a VGG16 based Image net model.
- * Syntax: java -cp "pathToModelTrainerToolJar" fully.Qualified.Package.Path.ClassName
- * Run program as JAR (mvn assembly with all dependencies) from project root:
- * - With default data saving location:
- * 		java -cp target/model-train-tool-jar-with-dependencies.jar com.image.net.model_train_tool.ModelTrainerTool
- * - With specified data saving location  
- * 		java -cp target/model-train-tool-jar-with-dependencies.jar com.image.net.model_train_tool.ModelTrainerTool --path C:/users/myUser/files/recognition_model
- * @author SaitamasPC
+ * A command line tool to train a VGG16 based Image classification model.
+ * <br>Should be packaged as executable JAR -file containing all dependencies with "mvn package" command.
+ * <p>
+ * Syntax: java -jar target/model-train-tool-jar-with-dependencies.jar
+ * <p>
+ * Run the JAR (mvn assembly with all dependencies) from project root:
+ * <br>- With default base location for dataset and model saving:
+ * 		<br>java -jar target/model-train-tool-jar-with-dependencies.jar
+ * <br>- With specified  base location for dataset and model saving:  
+ * 		<br>java -jar target/model-train-tool-jar-with-dependencies.jar --path C:/users/myUser/files/recognition_model
+ * @author Martin Lehtomaa
  *
  */
 @Command(name = "ModelTrainerTool", 
-		description = "Trains and saves a image recognition model based on VGG16 to desired location (default location = userPath/image_recognition_model)."
-					+ " Option -p, -P or -path can be used to specify saving location.")
+		description = "Trains and saves a Mechanical tool classification model to desired location."
+				+ " <br>Default location: C:/users/userPath/image_recognition_model."
+				+ " <br>Optional argument: -p, -P or --path can be used to specify location.")
 public class ModelTrainerTool implements Runnable {
 	
 	/**
-	 * Option to set custom path to model data save location
+	 * Option to set custom path to dataset and model data saving location
 	 * Default: userPath/image_recognition_model/
 	 * Can be specified with option: -p, -P, --path
 	 * */

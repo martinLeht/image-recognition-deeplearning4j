@@ -9,12 +9,7 @@ public interface IModelTrainer {
 	 * <br>Handles Fine-tune configuration of the new model.
 	 */
 	public void initPreTrainedModelWithTransferLearning() throws IOException;
-	
-	/**
-	 * Initializes a MultiLayer CNN from scratch.
-	 */
-	public void initFromScratch() throws IOException;
-	
+
 	/**
 	 * Performs the training of the model.
 	 * <br>IMPORTANT: Run method IModelTrainer.initPreTrainedModelWithTransferLearning() before training!
@@ -25,6 +20,12 @@ public interface IModelTrainer {
 	 */
 	public void trainPretrainedModel() throws IOException;
 	
+	
+	/**
+	 * Initializes a MultiLayer CNN from scratch.
+	 */
+	//public void initFromScratch() throws IOException;
+	
 	/**
 	 * Performs the training of the model.
 	 * <br>IMPORTANT: Run method IModelTrainer.initFromScratch() before training!
@@ -33,5 +34,6 @@ public interface IModelTrainer {
 	 * <br>- Saves and evaluates the model while training according to SAVING_INTERVAL 
 	 * <br>- Finally evaluates and saves the model as .zip file when converged through last epoch
 	 */
-	public void trainModelFromScratch() throws IOException;
+	//public void trainModelFromScratch() throws IOException;
+	
 }
